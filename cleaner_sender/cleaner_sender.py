@@ -4,6 +4,12 @@ from email.mime.text import MIMEText  # MIME (Multipurpose Internet Mail Extensi
 import datetime
 import psycopg2
 import logging
+import os
+import unidecode
+import unicodedata 
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # logging configuration
 logging.basicConfig(filename='cleaner_sender.log', 
@@ -11,18 +17,20 @@ logging.basicConfig(filename='cleaner_sender.log',
                     format=f'%(asctime)s - %(name)s - %(threadName)s - %(message)s')
 
 # connecting to Azure's postgres with psycopg2 library 
-logging.info ("connecting to postgresql: start")
+logging.info("connecting to postgresql: start")
+
 connection = psycopg2.connect(
-    host="maria-db-scrap.postgres.database.azure.com",\
+    host=os.environ.get('host'), \
     port=5432, \
     dbname="postgres", \
-    user="mariakononevskaya@maria-db-scrap", \
-    password="PlayNice1987")
-logging.info ("connecting to postgresql: end")
+    user=os.environ.get('userDB'),\
+    password=os.environ.get('passwordDB'))
+
+logging.info("connecting to postgresql: end")
 
 cursor = connection.cursor()
 
-
+# functions
 def delete_dubles():
     logging.info("deleting doubles: start")
     try:
@@ -34,47 +42,47 @@ def delete_dubles():
     except Exception as e:
         logging.info(f"There is an error, code {e}")  
     logging.info("deleting doubles: end")
-# delete = delete_dubles()
+
 
 def get_last():
     logging.info("finding last annonces: start")
     try:
-        cursor.execute("SELECT * FROM job_offers WHERE scraped >= (NOW() - INTERVAL '24 hours' );")
+        cursor.execute("SELECT * FROM job_offers WHERE scraped >= (NOW() - INTERVAL '12 hours' );")
         result = cursor.fetchall()
-        return result
-        # json_result = jsonify(result) 
         connection.commit()
+        return result
     except Exception as e:
         logging.info(f"There is an error, code {e}")
     logging.info("finding last annonces: end")
 
-results = get_last()
-print(results)
-
 
 def send_email():
     logging.info("[def send_email][sending email: start]")
+
+    results = get_last()
+    # print(type(results)) # list (of tuples)
+    # iterate over list of tuples
+    for p in results:
+        new = ('{} : {} : {} : {} : {} : {} : {} : {}'.format(*p))
+
+
     sender = "maria.clouddev@gmail.com"
     receiver = "maria.clouddev@gmail.com"
-
-    body_of_email = "Lastest annonces from Indeed.com. Don't forget to contact them!!!"
-    message = str(results[0][1]).encode('utf-8', errors='ignore')
-    message += str(" \n "+results[0][7]).encode('utf-8', errors='ignore') 
+    body_of_email = "Job annonces from the last 12 hours"
 
     # creating message
     logging.info("[def send_email][creating message]")
-    msg = MIMEText(body_of_email, "html")
+    msg = MIMEText(new, "html") # to send variable formatted => coding it to bytes
     msg["Subject"] = "Annonces from the last 12 hours"
     msg["From"] = sender
-    msg["To"] = "receiver"
+    msg["To"] = receiver
 
     # sending message
     try:
         logging.info("[def send_email][sending message]")
         server = smtplib.SMTP_SSL(host = "smtp.gmail.com", port = 465)
-        server.login(user = "maria.clouddev@gmail.com", password = "CloudDeveloper2021")
-        server.sendmail(sender, receiver, message)
-        # msg.as_string(result)
+        server.login(user=os.environ.get('userGmail'), password=os.environ.get('passwordGmail'))
+        server.sendmail(sender, receiver, msg.as_string()) # coding to string
         server.quit()
 
         #https://stackoverflow.com/questions/9942594/unicodeencodeerror-ascii-codec-cant-encode-character-u-xa0-in-position-20
@@ -83,22 +91,6 @@ def send_email():
     except Exception as e:
         logging.info(f"Email not sent, error : {e}")
     logging.info("[def send_email][sending email: end]")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
