@@ -1,12 +1,9 @@
-import smtplib, ssl  # smtplib is the built-in Python SMTP protocol client that allows us to connect to our email account and send mail via SMTP.
+import smtplib # smtplib is the built-in Python SMTP protocol client that allows us to connect to our email account and send mail via SMTP.
 from email.mime.text import MIMEText  # MIME (Multipurpose Internet Mail Extensions) is a standard for formatting files to be sent over the internet so they can be viewed in a browser or email application.
 # from email.mime.base import MimeBase
-import datetime
 import psycopg2
 import logging
 import os
-import unidecode
-import unicodedata 
 from dotenv import load_dotenv
 load_dotenv()
 
